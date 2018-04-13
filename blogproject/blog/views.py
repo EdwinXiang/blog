@@ -6,6 +6,9 @@ import markdown
 from comments.forms import CommentForm
 # from django.views.generic import ListView
 from django.views.generic import ListView,DetailView
+from django.utils.text import slugify
+from markdown.extensions.toc import TocExtension
+from django.db.models import Q
 # Create your views here.
 
 # 首页数据
@@ -185,12 +188,21 @@ class PortDetailView(DetailView):
 
     def get_object(self, queryset=None):
         post = super(PortDetailView,self).get_object(queryset=None)
-        post.body = markdown.markdown(post.body,
-                                      extensions=[
-                                          'markdown.extensions.extra',
-                                          'markdown.extensions.codehilite',
-                                          'markdown.extensions.toc',
-                                      ])
+        # post.body = markdown.markdown(post.body,
+        #                               extensions=[
+        #                                   'markdown.extensions.extra',
+        #                                   'markdown.extensions.codehilite',
+        #                                   'markdown.extensions.toc',
+        #                               ])
+        md = markdown.Markdown(extensions=[
+            'markdown.extensions.extra',
+            'markdown.extensions.codehilite',
+            'markdown.extensions.toc',
+            TocExtension(slugify=slugify),
+        ])
+        post.body = md.convert(post.body)
+        post.toc = md.toc
+
         return post
 
     def get_context_data(self, **kwargs):
@@ -213,8 +225,8 @@ class ArchivesView(ListView):
     def get_queryset(self):
         year = self.kwargs.get('year')
         month=self.kwargs.get('month')
-        return super(Archives,self).get_queryset().filter(created_time__year=year,
-                                                          created_time__month=month)
+        return super(ArchivesView,self).get_queryset().filter(created_time__year=year,
+                                                              created_tim__month=month)
 # def archives(request,year,month):
 #     port_list = Port.objects.filter(created_time__year=year,
 #                                     created_time__month=month
@@ -239,4 +251,17 @@ class categoryView(ListView):
         return super(categoryView,self).get_queryset().filter(category=cate)
 
 
+
+def search(request):
+    q = request.GET.get('q')
+    error_msg = ''
+
+    if not q:
+        error_msg = "请输入关键字"
+        return render(request,'blog/index.html',{'error_msg':error_msg})
+
+    post_list = Port.objects.filter(Q(title__icontains=q) | Q(body__icontains=q))
+
+    return render(request, 'blog/index.html', {'error_msg': error_msg,
+                                               'post_list': post_list})
 
