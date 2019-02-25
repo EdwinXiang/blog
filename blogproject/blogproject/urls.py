@@ -23,4 +23,4 @@ urlpatterns = [
     url(r'', include('comments.urls')),
     url(r'^all/rss/$',AllPortRssFeed(),name='rss'),
     url(r'^search/', include('haystack.urls')),
-]
+    ]
